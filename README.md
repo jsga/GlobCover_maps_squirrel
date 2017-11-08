@@ -30,11 +30,5 @@ The code is purely R. Creating the network matrix runs really slow, so some opti
 
 # The solution
 
-This is just a small example:
-
-{::nomarkdown}
-
-<iframe src="example.html" height="400" width="800" allowfullscreen="" frameborder="0"> </iframe>
-
-{:/}
+[This is just a small example](example.html)
 
