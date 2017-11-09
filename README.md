@@ -26,9 +26,12 @@ Having such a graph, the last step is to calculate the shortest path between two
 
 # The coding
 
-The code is purely R. Creating the network matrix runs really slow, so some optimziation needs to be done.
+The code is purely R and uses several packages: raster, rgdal, Matrix, igraph... Creating the network matrix runs really slow, so some optimziation needs to be done.
 
 # The solution
 
 [This is just a small example](example.html)
 
+# Download path coordinates
+
+Download then here

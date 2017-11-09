@@ -1,0 +1,164 @@
+---
+title: "Squirrel"
+output: html_notebook
+---
+
+```{r}
+# Load packages
+library(raster)
+library(leaflet)
+library(plotly)
+library(igraph)
+library(Matrix)
+
+# Load homemade functions
+source('build_matrix_graph.R')
+```
+
+
+# Load raster
+
+The raster is freely available from the web
+
+```{r, echo=TRUE}
+# Prepare globCover dataset
+# download.file('http://due.esrin.esa.int/files/Globcover2009_V2.3_Global_.zip',destfile = "Globcover2009_V2.3_Global_.zip")
+# unzip('Globcover2009_V2.3_Global_.zip',exdir = 'GlobCover')
+```
+
+We load the Spanish borders and plot the raster. Also, we map the Globcover labels to a continous number, as indicated by the legend found [here](http://due.esrin.esa.int/page_globcover.php). We set water bodies to _NA_, to indicate that the squirrel cannot go over them.
+```{r}
+# Crop the raster to view Spain only
+esp_border <- getData("GADM",country="Spain",level=0)
+glob = raster("GLOBCOVER_L4_200901_200912_V2.3.tif")
+glob_esp_orig = crop(glob,esp_border)
+
+## ================
+# Transform labels to roughness values
+globCover = c(11,14,20,30,40,50,60,70,90,100,
+              110,120,130,140,150,160,170,180,190,200,210,220,230)
+roughness = c(0.10,  0.10,  0.30,  0.30,  1.50,  1.50,  1.50,  1.50,  1.50,  1.50,
+              1.50,  0.50,  0.10,  0.03,  0.05,  0.50,  0.60,  0.20,  1.00,  NA,  NA,  NA,  NA)
+glob_esp_plot = reclassify(glob_esp_orig,cbind(globCover,roughness))
+# Let's tranform NA values to "-100" roughness so that we squirrel cannot swim. This one is only used for calculations.
+glob_esp = reclassify(glob_esp_plot,c(NA,-100,-100))
+
+par(mfrow=c(1,2))
+plot(glob_esp_plot)
+plot(glob_esp)
+```
+
+```{r}
+## ================
+# pal2 = colorNumeric("Greens", domain = NULL)
+# # Cretae map
+# ll_map =  leaflet() %>%
+#   # Base maps
+#   addProviderTiles('Esri.WorldTopoMap',group="Esri Topo") %>%
+#   addProviderTiles("Esri.WorldImagery", group = "Esri Image") %>%
+#   # Roughness info
+#   addRasterImage(glob_esp, opacity = 0.5,colors=pal2, group="Roughness map") %>%
+# 
+#   addPolygons(data = esp_border,
+#               fill = F, weight = 2, color = "black", group = "Borders") %>%
+#   addLegend(position="bottomleft", pal = pal2, values = values(glob_esp),
+#             title = "Roughness",
+#             opacity = 1) %>%
+#   # Control groups
+#   addLayersControl(
+#     baseGroups = c("Esri Image","Esri Topo"),
+#     overlayGroups = c("Roughness map", "Borders"),
+#     options = layersControlOptions(collapsed = F)
+#   )
+# ll_map
+```
+
+
+# The path
+
+For testing purposes we start by chopping a small section
+```{r}
+# Chop a small section
+lat = 43.05
+lon = -4.05
+n=0.15 # width of the box
+cropbox2 <-c(lon-n,lon+n,lat-n,lat+n)
+small_img = crop(glob_esp,cropbox2)
+small_img_plot = crop(glob_esp_plot,cropbox2)
+# Plot
+par(mfrow=c(1,2))
+plot(small_img_plot)
+plot(small_img)
+# translate raster to matrix
+mat = raster::as.matrix(small_img)
+dim(mat)
+```
+
+
+
+```{r}
+# create 0-1 edge matrix
+N = dim(mat)[1] * dim(mat)[2] # Number of vertices
+Ni= dim(mat)[1] # number of rows
+Nj= dim(mat)[2] # number of columns
+
+# Call our homemade function
+mat_path = build_matrix_graph(Ni,Nj)
+
+
+# Add weights to each edge
+for(i in 1:N){
+  if( is.na(values(small_img)[i])){
+    mat_path[i,mat_path[i,] != 0] = 0
+  }else{
+    mat_path[i,mat_path[i,] != 0] = 0.001 + 1.5 - values(small_img)[i]
+  }
+}
+
+# Build igraph
+g <- graph.adjacency(mat_path, mode="directed",weighted = T)
+  
+# Calculate shortest path between two poitns
+p1 = c(1,2)
+p2 = c(Ni,Nj-1)
+news.path <- shortest_paths(g,from = index2num(p1[1],p1[2],Nj), 
+                            to  = index2num(p2[1],p2[2],Nj),
+                            output = "both") # both path nodes and edges
+
+# Find those poitns in lat,lon
+path_squirrel = news.path$vpath[[1]] %>% as.numeric
+path_points = rasterToPoints(small_img)[path_squirrel,1:2]
+```
+
+### Visualize solution
+
+```{r}
+# Make a leaflet visualization
+ll_map =  leaflet() %>%
+  # Base maps
+  addProviderTiles('Esri.WorldGrayCanvas',group="Esri Grey") %>%
+  addProviderTiles('Esri.WorldTopoMap',group="Esri Topo") %>%
+  addProviderTiles("Esri.WorldImagery", group = "Esri Image") %>%
+  # Roughness info
+  addRasterImage(small_img_plot, opacity = 0.5,colors=pal2, group="Roughness map") %>%
+  addLegend(position="bottomleft", pal = pal2, values = values(small_img_plot),
+            title = "Roughness",
+            opacity = 1) %>%
+  # path info
+  addPolylines(lng=path_points[,1],lat=path_points[,2]) %>% 
+  # Control groups
+  addLayersControl(
+    baseGroups = c("Esri Grey","Esri Image","Esri Topo"),
+    overlayGroups = c("Roughness map", "Borders"),
+    options = layersControlOptions(collapsed = F)
+  )
+ll_map
+# library(htmlwidgets)
+# saveWidget(ll_map,'example.html')
+```
+
+### Some statistics on the path
+
+Average roughness, % numer of steps outside trees..
+
+
