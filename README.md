@@ -1,6 +1,6 @@
 [ WORK IN PROGRESS ]
 
-This repository answers the following simple question:
+This repository answers the following simple question.
 
 > Can a squirrel cross from north to south spain without touching the ground?
 
@@ -9,6 +9,12 @@ The answer is: **obviously not**. But, another question arises, and this one is 
 > If a squirrel had to go from the north of Spain to the south, touching the ground as little as posisble: which way would it follow?
 
 The answer is not trivial.
+
+# The history
+
+The legend says that Spain was once so thickly-forested that a squirrel could cross the peninsula hopping from tree to tree. Even though we all learned this at school as a ground truth, it seems that, in fact, this was just a [legend](https://copepodo.wordpress.com/2009/05/11/la-espana-de-la-ardilla-y-la-espana-del-conejo/). Spain was in fact "land of rabbits", as the Romans used to call it. 
+
+Much [has been](https://www.facebook.com/Una-ardilla-podr%C3%ADa-cruzar-Espa%C3%B1a-saltando-de-gilipollas-en-gilipollas-185947181436539/) said about that squirrel, but none have prooved it analytically. Here you have found the asnwer!
 
 # The procedure
 
