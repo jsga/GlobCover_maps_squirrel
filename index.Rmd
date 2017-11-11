@@ -1,43 +1,38 @@
 ---
 title: "The squirrel problem"
+author: "Javier Saez Gallego"
 output: 
   flexdashboard::flex_dashboard:
-    storyboard: true
+    orientation: rows
     social: menu
-    source: embed
+    source_code: embed
 ---
 
 ```{r setup, include=FALSE}
 library(flexdashboard)
 library(leaflet)
 library(raster)
+library(plotly)
+library(readxl)
+library(dplyr)
 
 # Load path and map
 path_points = read.csv("Files/path_coordinates_solution.csv")
-small_img_plot = raster("Files/GlobCover_Spain.tif")
+spain_img = raster("Files/GlobCover_Spain.tif")
+
+# transform raster values to be plotted nicely
+# map labels to roughness values
+globCover = c(11,14,20,30,40,50,60,70,90,100,
+              110,120,130,140,150,160,170,180,190,200,210,220,230)
+roughness = c(0.10,  0.10,  0.30,  0.30,  1.50,  1.50,  1.50,  1.50,  1.50,  1.50,
+              1.50,  0.50,  0.10,  0.03,  0.05,  0.50,  0.60,  0.20,  1.00,  NA,  NA,  NA,  NA)
+small_img_plot = reclassify(spain_img,cbind(globCover,roughness))
+
 ```
 
-<!-- Modify the default CSS -->
-<style>
-.storyboard-nav .sbframelist {
-    margin: 1 auto;
-    width: 94%;
-    height: 50px;
-    overflow: hidden;
-    text-shadow: none;
-    margin-bottom: 8px;
-}
+Map
+=======================================================================
 
-.storyboard-nav .sbnext, .storyboard-nav .sbprev {
-    float: left;
-    width: 2%;
-    height: 50px;
-    font-size: 50px;
-}
-</style>
-<!-- end CSS modifications -->
-
-### The map
 
 ```{r}
 # The raster is too big to be displayed so let's shrink it
@@ -69,21 +64,80 @@ ll_map
 
 
 
+Path statistics
+=======================================================================
 
-### The path
+
+Row
+-----------------------------------------------------------------------
+
+### 
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE}
 
-small_img = reclassify(small_img_plot,c(100,NA,NA))
+# Get values of the pixels where the squirrel steps
+values_glob = values(spain_img)[path_points$n]
+tab_summary = sort(table(values_glob))
+tab_labels = as.numeric(names(tab_summary))
 
-values_glob = values(small_img)
-table(values_glob[path_points$n])
-barplot(table(values_glob[path_points$n]))
+# Create some nice labels for each type of land
+legend = read_excel("Files/Globcover2009_Legend.xls")
+idx = mapply(function(x) which(x == legend$Value), tab_labels)
+
+# Prepare colors
+pal2 = colorNumeric("RdYlGn", domain = c(0,1.5))
+idx2 = mapply(function(x) which(x == globCover), tab_labels)
+col_roughness = pal2(roughness[idx2])
+
+# Make the plot
+plot_ly( y = tab_summary, x = names(tab_summary),
+        text = legend$Label[idx],
+        type = 'bar', hoverinfo = 'text',
+        marker = list(color = col_roughness)) %>%
+  layout(title = "Land cover along the shortest path",
+         xaxis = list(title = "Land cover type"),
+         yaxis = list(title = "count"))
 
 ```
 
-***
 
-### Info
+Row
+-----------------------------------------------------------------------
+
+### 
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+# Get the colors
+values_glob_plot = values(small_img_plot)[path_points$n]
+col_roughness_all = pal2(values_glob_plot)
+
+# Get the hover text
+idx = mapply(function(x) which(x == legend$Value), values_glob)
+text_hover = legend$Label[idx]
+
+# Make the plot
+plot_ly( x=1:length(values_glob_plot),y = values_glob,
+         marker=list(color =col_roughness_all ),
+         text = text_hover) %>%
+  layout(title = "Land cover along the shortest path",
+         xaxis = list(title = "Step number"),
+         yaxis = list(title = "Land cover type"))
+
+```
+
+
+Info
+=======================================================================
+
+
+> Can a squirrel cross from north to south spain without touching the ground?
+
+The answer is: **obviously not**. But, another question arises, and this one is not so easy to answer:
+
+> If a squirrel had to go from the north of Spain to the south, touching the ground as little as posisble: which way would it follow?
+
+The answer is given here!
 
 The code is in [this](https://github.com/jsga/GlobCover_maps_squirrel) repository. Feel free to share and comment.
+
