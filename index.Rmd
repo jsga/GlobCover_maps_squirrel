@@ -8,6 +8,21 @@ output:
     source_code: embed
 ---
 
+<!-- Modify the default CSS --> 
+<style> 
+.navbar-inverse .navbar-nav>.active>a, .navbar-inverse .navbar-nav>.active>a:hover, .navbar-inverse .navbar-nav>.active>a:focus {
+    color: #f5f5f5;
+    background-color: #4a524c;
+}
+
+.navbar-inverse {
+    background-color: #999999;
+    border-color: #cccccc;
+}
+</style> 
+<!-- END  CSS --> 
+
+
 ```{r setup, include=FALSE}
 library(flexdashboard)
 library(leaflet)
@@ -120,7 +135,7 @@ text_hover = legend$Label[idx]
 plot_ly( x=1:length(values_glob_plot),y = values_glob,
          marker=list(color =col_roughness_all ),
          text = text_hover) %>%
-  layout(title = "Land cover along the shortest path",
+  layout(title = "",
          xaxis = list(title = "Step number"),
          yaxis = list(title = "Land cover type"))
 
@@ -130,6 +145,10 @@ plot_ly( x=1:length(values_glob_plot),y = values_glob,
 Info
 =======================================================================
 
+Row
+-----------------------------------------------------------------------
+
+### Intro
 
 > Can a squirrel cross from north to south spain without touching the ground?
 
@@ -137,7 +156,18 @@ The answer is: **obviously not**. But, another question arises, and this one is 
 
 > If a squirrel had to go from the north of Spain to the south, touching the ground as little as posisble: which way would it follow?
 
-The answer is given here!
+You have found the answer! Browse trough the interactive map or [download](https://github.com/jsga/GlobCover_maps_squirrel/blob/master/Files/path_coordinates_solution.csv) the coordinates of the path. The code is publicly available in [this](https://github.com/jsga/GlobCover_maps_squirrel) repository. Feel free to share and comment it.
 
-The code is in [this](https://github.com/jsga/GlobCover_maps_squirrel) repository. Feel free to share and comment.
+
+Row
+-------------------------------------
+
+### The solution
+
+[To be filled up, work in progress]
+
+### Contact
+
+Send me an [email](mailto:javiersaezgallego@gmail.com).
+
 
