@@ -2,84 +2,54 @@
 title: "Squirrel"
 output: 
   html_notebook:
-    code_folding: hide
-    fig_caption: yes
     toc: yes
     toc_collapse: no
     toc_float: yes
 ---
 
-```{r}
+```{r, message=FALSE, warning=FALSE, include=FALSE}
 # Load packages
 library(raster)
 library(leaflet)
 library(plotly)
 library(igraph)
 library(Matrix)
+library(htmlwidgets)
 
 # Load homemade functions
 source('build_matrix_graph.R')
 ```
 
 
-# Load raster
+# Download and load raster
 
 The raster is freely available from the web
 
 ```{r, echo=TRUE}
-# Prepare globCover dataset
+# Download globCover dataset
 # download.file('http://due.esrin.esa.int/files/Globcover2009_V2.3_Global_.zip',destfile = "Globcover2009_V2.3_Global_.zip")
 # unzip('Globcover2009_V2.3_Global_.zip',exdir = 'GlobCover')
+# Load raster
+glob = raster("GLOBCOVER_L4_200901_200912_V2.3.tif")
 ```
 
-We load the Spanish borders and plot the raster. Also, we map the Globcover labels to a continous number, as indicated by the legend found [here](http://due.esrin.esa.int/page_globcover.php). We set water bodies to _NA_, to indicate that the squirrel cannot go over them.
+We also need to map the Globcover labels to a continous number, as indicated by the legend found [here](http://due.esrin.esa.int/page_globcover.php). We set water bodies to _NA_. Later on, we set the roughness ot water bodies to 100 to indicate that the squirrel cannot swim over them.
 ```{r}
-# Crop the raster to view Spain only
-# esp_border <- getData("GADM",country="Spain",level=0)
-glob = raster("GLOBCOVER_L4_200901_200912_V2.3.tif")
-# glob_esp_orig = crop(glob,esp_border)
-
-## ================
-# Transform labels to roughness values
+# map labels to roughness values
 globCover = c(11,14,20,30,40,50,60,70,90,100,
               110,120,130,140,150,160,170,180,190,200,210,220,230)
 roughness = c(0.10,  0.10,  0.30,  0.30,  1.50,  1.50,  1.50,  1.50,  1.50,  1.50,
               1.50,  0.50,  0.10,  0.03,  0.05,  0.50,  0.60,  0.20,  1.00,  NA,  NA,  NA,  NA)
-# glob_plot = reclassify(glob,cbind(globCover,roughness))
-# Let's tranform NA values to "-100" roughness so that we squirrel cannot swim. This one is only used for calculations.
-# glob2 = reclassify(glob,c(NA,-100,-100))
-```
-
-```{r}
-## ================
-# pal2 = colorNumeric("Greens", domain = NULL)
-# # Cretae map
-# ll_map =  leaflet() %>%
-#   # Base maps
-#   addProviderTiles('Esri.WorldTopoMap',group="Esri Topo") %>%
-#   addProviderTiles("Esri.WorldImagery", group = "Esri Image") %>%
-#   # Roughness info
-#   addRasterImage(glob_esp, opacity = 0.5,colors=pal2, group="Roughness map") %>%
-# 
-#   addPolygons(data = esp_border,
-#               fill = F, weight = 2, color = "black", group = "Borders") %>%
-#   addLegend(position="bottomleft", pal = pal2, values = values(glob_esp),
-#             title = "Roughness",
-#             opacity = 1) %>%
-#   # Control groups
-#   addLayersControl(
-#     baseGroups = c("Esri Image","Esri Topo"),
-#     overlayGroups = c("Roughness map", "Borders"),
-#     options = layersControlOptions(collapsed = F)
-#   )
-# ll_map
 ```
 
 
-# The path
+# Map of Spain
 
-For testing purposes we start by chopping a small section
-```{r}
+We chop a small section of the world map around the Iberian peninsula. The code is made to work only for squared rasters.
+
+The start and end points of the path are set to be the northernmost point (Estaca do bares) and the sourthernmost one (Tarifa).
+
+```{r, message=FALSE, warning=FALSE}
 # Chop a small section
 lat = 40
 lon = -5.1
@@ -87,16 +57,20 @@ n=4.5 # width of the box
 cropbox2 <-c(lon-n,lon+n,lat-n,lat+n) # crop a square box
 spain_img = crop(glob,cropbox2)
 
+
 # re-classify the raster values to numeric
 small_img_plot = reclassify(spain_img,cbind(globCover,roughness))
 # Let's tranform NA values to "-100" roughness so that we squirrel cannot swim. This one is only used for calculations.
 small_img = reclassify(small_img_plot,c(NA,-100,-100))
 
+# Save the raster for later use in the dashboard
+raster::writeRaster(small_img_plot, "Files/GlobCover_Spain.tif",overwrite=TRUE)
+
 
 # Plot
-plot(spain_img)
-plot(small_img_plot)
-plot(small_img) # we use this one for the analysis
+# plot(spain_img) # Original globcover labels
+plot(small_img_plot) # transformed labels, with NA
+# plot(small_img) # we use this one for the analysis with NA=-100
 
 # Start and end points
 start_point = c(43.780824, -7.681479) # Estaca do bares
@@ -105,29 +79,44 @@ end_point = c(36.003797, -5.609124)# Tarifa
 # Plot start and end points
 points(x=start_point[2],y=start_point[1],pch=19)
 points(x=end_point[2],y=end_point[1],pch=19)
-
-# translate raster to matrix
-mat = raster::as.matrix(small_img)
-dim(mat)
-
 ```
 
-
-
-```{r}
+Dimensions of the raster:
+```{r, echo=TRUE, message=FALSE, warning=FALSE}
+# translate raster to matrix
+mat = raster::as.matrix(small_img)
 
 # create 0-1 edge matrix
 N = dim(mat)[1] * dim(mat)[2] # Number of vertices
 Ni= dim(mat)[1] # number of rows
 Nj= dim(mat)[2] # number of columns
 
-# Call our homemade function
-mat_path = build_matrix_graph(Ni,Nj,val_raster = 1.5-values(small_img)+0.0000001)
+N
+```
 
+
+Next we create the graph as a matrix. The matrix is equal to a 0 if two pixels are not linked, and equal to the roughness of theincoming pixel if they are. Two pixels are linked if they are adjacent to each other. This huge matrix of dimension `r N` by `r N` is really sparse and unless optimized takes too long to be created. It is build inside the function _build_matrix_graph()_ and it took few tries to make it run at reasonable speeds.
+
+The values of the raster are slighly modified to be used in a standard shortest-path algorithm: 0.0000001 weight on an edge means "forest", while 1.5 means "bare land" and 100 means "water bodies".
+
+```{r, echo=TRUE, message=FALSE, warning=FALSE}
+# Call our homemade function
+val_raster = 1.5-values(small_img)+0.0000001
+
+t = Sys.time()
+mat_path = build_matrix_graph(Ni,Nj,val_raster = val_raster)
+Sys.time() - t
+
+mat_path[1:10,1:10]
+```
+
+The shortest path is claulcated using the [igraph](http://igraph.org/) library. It works surprisingly fast.
+
+```{r, echo=TRUE, message=FALSE, warning=FALSE}
 # Build igraph
 g <- graph.adjacency(mat_path, mode="directed",weighted = T)
   
-# Calculate shortest path between two poitns
+## Calculate shortest path between two poitns
 
 # Find index of the start and end point
 img_points = rasterToPoints(small_img)
@@ -142,17 +131,25 @@ news.path <- shortest_paths(g,from = idx_start,
 # Find those poitns in lat,lon
 path_squirrel = news.path$vpath[[1]] %>% as.numeric
 path_points = img_points[path_squirrel,1:2]
+
+# Save squirrel path
+write.csv(data.frame(lon = path_points[,1],
+           lat = path_points[,2],
+           n = path_squirrel),
+          file="Files/path_coordinates_solution.csv",row.names=F)
+
 ```
 
 ### Visualize solution
 
-```{r}
-plot(small_img_plot)
-lines(path_points,cex=0.1)
-```
+The path and the roughness (land cover) map is displayed below. Due to its size, the land cover map needs to be aggregated  by a factor of 3(i.e., reduce its size).
 
 
-```{r}
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+# The raster is too big to be displayed so let's shrink it
+agg_small_img_plot = raster::aggregate(small_img_plot,fact=3)
+
+
 # Make a leaflet visualization
  pal2 = colorNumeric("RdYlGn", domain = NULL)
 
@@ -161,11 +158,11 @@ ll_map =  leaflet() %>%
   addProviderTiles('Esri.WorldGrayCanvas',group="Esri Grey") %>%
   addProviderTiles('Esri.WorldTopoMap',group="Esri Topo") %>%
   addProviderTiles("Esri.WorldImagery", group = "Esri Image") %>%
-  # Roughness info
-  # addRasterImage(small_img_plot, opacity = 0.5,colors=pal2, group="Roughness map") %>%
-  # addLegend(position="bottomleft", pal = pal2, values = values(small_img_plot),
-  # title = "Roughness",
-  # opacity = 1) %>%
+  # # Roughness info
+  addRasterImage(agg_small_img_plot, opacity = 0.5,colors=pal2, group="Roughness map") %>%
+  addLegend(position="bottomleft", pal = pal2, values = values(agg_small_img_plot),
+  title = "Roughness",
+  opacity = 1) %>%
   # path info
   addPolylines(lng=path_points[,1],lat=path_points[,2],group="Path") %>% 
   # Control groups
@@ -175,12 +172,6 @@ ll_map =  leaflet() %>%
     options = layersControlOptions(collapsed = F)
   )
 ll_map
-# library(htmlwidgets)
+
 # saveWidget(ll_map,'example.html')
 ```
-
-### Some statistics on the path
-
-Average roughness, % numer of steps outside trees..
-
-
