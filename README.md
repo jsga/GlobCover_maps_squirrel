@@ -1,12 +1,10 @@
-[ WORK IN PROGRESS ]
-
 This repository answers the following simple question.
 
-> Can a squirrel cross from north to south spain without touching the ground?
+> Can a squirrel cross from north to south Spain without touching the ground?
 
 The answer is: **obviously not**. But, another question arises, and this one is not so easy to answer:
 
-> If a squirrel had to go from the north of Spain to the south, touching the ground as little as posisble: which way would it follow?
+> If a squirrel had to go from the north of Spain to the south, touching the ground as little as possible: which way would it follow?
 
 The answer is not trivial.
 
@@ -14,7 +12,7 @@ The answer is not trivial.
 
 The legend says that Spain was once so thickly-forested that a squirrel could cross the peninsula hopping from tree to tree. Even though we all learned this at school as a ground truth, it seems that, in fact, this was just a [legend](https://copepodo.wordpress.com/2009/05/11/la-espana-de-la-ardilla-y-la-espana-del-conejo/). Spain was in fact "land of rabbits", as the Romans used to call it. 
 
-Much [has been](https://www.facebook.com/Una-ardilla-podr%C3%ADa-cruzar-Espa%C3%B1a-saltando-de-gilipollas-en-gilipollas-185947181436539/) said about that squirrel, but none have prooved it analytically. Here you have found the asnwer!
+Much [has been](https://www.facebook.com/Una-ardilla-podr%C3%ADa-cruzar-Espa%C3%B1a-saltando-de-gilipollas-en-gilipollas-185947181436539/) said about that squirrel, but none have proved it analytically. Here you have found the answer!
 
 # The procedure
 
@@ -32,12 +30,12 @@ Having such a graph, the last step is to calculate the shortest path between two
 
 # The coding
 
-The code is purely R and uses several packages: raster, rgdal, Matrix, igraph... Creating the network matrix runs really slow, so some optimziation needs to be done.
+The code is purely R and uses several packages: raster, rgdal, Matrix, igraph... Creating the network matrix runs really slow, so some optimization in terms of code to be done.
 
 # The solution
 
-[This is just a small example](example.html)
+The solution is presented [HERE](http://jsaezgallego.com/GlobCover_maps_squirrel/) as a interactive dashboard
 
 # Download path coordinates
 
-Download then here
+Download them [here](https://github.com/jsga/GlobCover_maps_squirrel/blob/master/Files/path_coordinates_solution.csv)
