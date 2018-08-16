@@ -1,10 +1,13 @@
 ---
-title: "Squirrel"
-output: 
+title: "Shortest path across Spain: the squirrel problem"
+output:
   html_notebook:
     toc: yes
     toc_collapse: no
     toc_float: yes
+  html_document:
+    df_print: paged
+    toc: yes
 ---
 
 ```{r, message=FALSE, warning=FALSE, include=FALSE}
@@ -20,6 +23,13 @@ library(htmlwidgets)
 source('build_matrix_graph.R')
 ```
 
+This notebook gathers the necessary analyses for the [squirrel dashboard](http://jsaezgallego.com/GlobCover_maps_squirrel/). The notebook consists of the following steps:
+
+1. Download data from the internet. The data consists of GIS information on whether a piece of land is a forest, a river, a man-made construction, etc.
+2. Create path matrix. The squirrel takes one step at a time. In terms of a raster map, this means we can reach each pixel only from adjacent pixels. Think of it as a huge spare matrix.
+3. Optimize path. Calculate shortest path from A to B. The cost of each segment is the pixel value (forest = no cost to move)
+4. Visualize solution
+
 
 # Download and load raster
 
@@ -30,7 +40,7 @@ The raster is freely available from the web
 # download.file('http://due.esrin.esa.int/files/Globcover2009_V2.3_Global_.zip',destfile = "Globcover2009_V2.3_Global_.zip")
 # unzip('Globcover2009_V2.3_Global_.zip',exdir = 'GlobCover')
 # Load raster
-glob = raster("GLOBCOVER_L4_200901_200912_V2.3.tif")
+glob = raster("GlobCover/GLOBCOVER_L4_200901_200912_V2.3.tif")
 ```
 
 We also need to map the Globcover labels to a continous number, as indicated by the legend found [here](http://due.esrin.esa.int/page_globcover.php). We set water bodies to _NA_. Later on, we set the roughness ot water bodies to 100 to indicate that the squirrel cannot swim over them.
@@ -43,7 +53,7 @@ roughness = c(0.10,  0.10,  0.30,  0.30,  1.50,  1.50,  1.50,  1.50,  1.50,  1.5
 ```
 
 
-# Map of Spain
+## Map of Spain
 
 We chop a small section of the world map around the Iberian peninsula. The code is made to work only for squared rasters.
 
@@ -88,12 +98,12 @@ mat = raster::as.matrix(small_img)
 N = dim(mat)[1] * dim(mat)[2] # Number of vertices
 Ni= dim(mat)[1] # number of rows
 Nj= dim(mat)[2] # number of columns
-
 N
 ```
 
+# Path matrix
 
-Next we create the graph as a matrix. The matrix is equal to a 0 if two pixels are not linked, and equal to the roughness of theincoming pixel if they are. Two pixels are linked if they are adjacent to each other. This huge matrix of dimension `r N` by `r N` is really sparse and unless optimized takes too long to be created. It is build inside the function _build_matrix_graph()_ and it took few tries to make it run at reasonable speeds.
+Next we create the graph as a matrix. The matrix is equal to a 0 if two pixels are not linked, and equal to the roughness of theincoming pixel if they are. Two pixels are linked if they are adjacent to each other. This huge matrix of dimension N by N is really sparse and unless optimized takes too long to be created. It is build inside the function _build_matrix_graph()_ and it took few tries to make it run at reasonable speeds.
 
 The values of the raster are slighly modified to be used in a standard shortest-path algorithm: 0.0000001 weight on an edge means "forest", while 1.5 means "bare land" and 100 means "water bodies".
 
@@ -107,6 +117,8 @@ Sys.time() - t
 
 mat_path[1:10,1:10]
 ```
+
+# Shortest path
 
 The shortest path is claulcated using the [igraph](http://igraph.org/) library. It works surprisingly fast.
 
@@ -138,7 +150,7 @@ write.csv(data.frame(lon = path_points[,1],
 
 ```
 
-### Visualize solution
+# Visualize solution
 
 The path and the roughness (land cover) map is displayed below. Due to its size, the land cover map needs to be aggregated  by a factor of 3(i.e., reduce its size).
 
